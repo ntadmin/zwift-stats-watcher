@@ -26,7 +26,7 @@
 //     distance: 12475, // who knows...
 //     power: 250, // watts
 //     heartrate: 156, // bpm
-//     powerHistory: [],
+//    powerHistory: [],
 //   },
 //   703916: { // new player row
 //     id: 703916,
@@ -185,6 +185,13 @@ async function setPlayerZPData(playerId) {
   }
 }
 
+function setPlayerDataFromStore(playerId) {
+  players[playerId].zpName = players[playerId].name + 
+                             " (FTP:" + players[playerId].ftp +
+                             "; THR:" + players[playerId].thresholdHR + 
+                             "; W'bal max:" + players[playerId].wbalMax + ")";
+}
+
 function removePlayer(playerId) {
   document.getElementById(`player-data-${playerId}`).remove();
   delete players[playerId];
@@ -245,7 +252,6 @@ function setPlayerTableData(playerId) {
 }
 
 async function addPlayer(playerId) {
-  await setPlayerZPData(playerId);
   const playerData = document.getElementById('template-player-data').content.cloneNode(true);
   playerData.querySelector('.player-data-row').id = `player-data-${playerId}`;
   document
@@ -261,7 +267,25 @@ async function addPlayer(playerId) {
   showColumns();
 }
 
-Object.keys(players).forEach(addPlayer);
+async function addPlayerFromKeyUsingZP(playerId) {
+  await setPlayerZPData(playerId)
+  addPlayer(playerId)
+}
+
+function addPlayerFromStoreInfo(playerId) {
+  setPlayerDataFromStore(playerId)
+  addPlayer(playerId)
+}
+
+//
+// Hiding here ...
+// This sets the initial set of players on the screen.
+//
+console.log(players)
+// We can't get data from ZP at the moment.
+//Object.keys(players).forEach(addPlayerFromKeyUsingZP);
+// But we have some from the new form
+Object.keys(players).forEach(addPlayerFromStoreInfo);
 
 async function sendData(data) {
   const postData = {
@@ -351,17 +375,29 @@ window.zwiftData.on('incomingPlayerState', (playerState, serverWorldTime) => {
 document.querySelector('button.add-player').addEventListener('click', async () => {
   const nameInput = document.querySelector('input[name=player-name]');
   const idInput = document.querySelector('input[name=zwift-id]');
+  const ftpInput = document.querySelector('input[name=FTP]');
+  const thrInput = document.querySelector('input[name=threshold-hr]');
+  const wbmaxInput = document.querySelector('input[name=wbal-max]');
+
   const playerName = nameInput.value;
   const playerId = parseInt(idInput.value);
+  const ftp = parseInt(ftpInput.value);
+  const thr = parseInt(thrInput.value);
+  const wbmax = parseInt(wbmaxInput.value);
+
   if (playerName && playerId) {
     players[playerId] = {
       id: playerId,
       name: playerName,
+      ftp: ftp,
+      thresholdHR: thr,
+      wbalMax: wbmax,
       powerHistory: [],
       states: [],
       maxWorldTime: 0,
       gas: 100,
     }
+
     await addPlayer(playerId);
     store.set('players', players);
     nameInput.value = '';
